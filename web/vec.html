@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Path Simplification</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="viewport"
+content="width=device-width
+, initial-scale=1.0
+, maximum-scale=1.0
+, user-scalable=no">
+
+<script src="paper.js/dist/paper.js" type="text/javascript"></script>
+<script src="jquery-1.9.1.min.js" type="text/javascript"></script>
+<script type="text/paperscript" canvas="canvas">
+
+var path;
+function onMouseDown(event) {
+    // If we produced a path before, deselect it:
+    if (path) {
+        path.selected = false;
+    }
+
+    // Create a new path and set its stroke color to black:
+    path = new Path();
+    path.add(event.point);
+    path.strokeColor = 'black';
+
+    // Select the path, so we can see its segment points:
+    path.fullySelected = true;
+}
+
+// While the user drags the mouse, points are added to the path
+// at the position of the mouse:
+function onMouseDrag(event) {
+    path.add(event.point);
+
+    // Update the content of the text item to show how many
+    // segments it has:
+    debug( 'Segment count: ' + path.segments.length );
+}
+
+// When the mouse is released, we simplify the path:
+function onMouseUp(event) {
+    var segmentCount = path.segments.length;
+
+    // When the mouse is released, simplify it:
+    path.simplify(50);
+    var strokes = [];
+	for (var i in path.segments) {
+    	strokes.push([path.segments[i].point.x,path.segments[i].point.y]);
+	}
+	points.push(strokes);
+	hwr_request(points);
+
+    // Select the path, so we can see its segments:
+    path.fullySelected = true;
+
+    var newSegmentCount = path.segments.length;
+    var difference = segmentCount - newSegmentCount;
+    var percentage = 100 - Math.round(newSegmentCount / segmentCount * 100);
+    debug( difference + ' of the ' + segmentCount + ' segments were removed. Saving ' + percentage + '%');
+}
+</script>
+<script>
+var points = [];
+  var canvas_size_x = 300;
+  var canvas_size_y = 300;
+  function hwr_request(points) {
+    var obj = {
+      "canvas_size":[canvas_size_x,canvas_size_y],
+      "strokes_points":points
+    };
+	var json = JSON.stringify(obj);
+    $.ajax({
+      url: 'http://hwr.missinglink.co.jp/v1?'+json,
+      jsonpCallback:"_mlHWRCallback",
+      jsonp:false,
+      dataType:'jsonp',
+      cache:true,
+      success:function(data,stat){
+        var html = '<table><tr><td>Result</td><td>Score</td></tr>';
+        for(var i in data.result) {
+          html += '<tr>';
+          html += '<td>' + data.result[i].value + '</td>';
+          html += '<td>' + data.result[i].score + '</td>';
+          html += '</tr>';
+        }
+        $('#result').html(html);
+
+        html += '</table>';
+      }
+    });
+  }
+  function debug(tex) {
+    $('#debug').text(tex);
+  }
+  $(document).ready(function(){
+    $('#delete').click(function(){
+      location.reload();
+    });
+  });
+</script>
+</head>
+<body class="fullscreen">
+  <h1>Handwriting Recognition API</h1>
+  <p>JSONP API(v1): hwr.missinglink.co.jp/v1/?[JSON]</p>
+  <table>
+    <tr>
+      <td><div class="canvas"><canvas width=300 height=300 style='border:1px solid #888' id="canvas"></canvas></div><button id='delete'>delete</button></td>
+      <td id='result'></td>
+</tr>
+</table>
+<p id='debug'></p>
+</body>
+</html>
